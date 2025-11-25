@@ -1,0 +1,25 @@
+{
+  "name": "hack-club-slack-live-message-count",
+  "version": "1.0.0",
+  "description": "Live counter for Hack Club Slack messages with real-time updates",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "slack",
+    "hackclub",
+    "message-counter",
+    "real-time",
+    "websocket"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@slack/bolt": "^4.6.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  }
+}
