@@ -11,6 +11,7 @@ A real-time dashboard that displays a live count of messages sent on the Hack Cl
 - 💾 **Persistent Storage**: Message count is saved and persists across server restarts
 - 🎨 **Beautiful UI**: Hack Club themed design with smooth animations
 - 🔄 **Auto-reconnect**: Automatically reconnects if the connection drops
+- 🤖 **Auto-join Channels**: Bot automatically joins all public channels on startup
 
 ## Prerequisites
 
@@ -29,8 +30,9 @@ A real-time dashboard that displays a live count of messages sent on the Hack Cl
 ### 2. Configure Bot Permissions
 
 Go to **OAuth & Permissions** and add these **Bot Token Scopes**:
+- `channels:join` - **Required**: Join public channels automatically
+- `channels:read` - **Required**: List all public channels
 - `channels:history` - View messages in public channels
-- `channels:read` - View basic channel info
 - `groups:history` - View messages in private channels (if needed)
 - `groups:read` - View basic private channel info (if needed)
 - `im:history` - View direct messages (if needed)
@@ -81,13 +83,37 @@ npm install
 npm start
 ```
 
-### 8. Add the Bot to Channels
+The bot will automatically join all public channels when it starts up! 🎉
 
-Invite your bot to channels where you want to count messages:
-- In Slack, go to the channel
-- Type `/invite @YourBotName`
+## GitHub Pages Deployment
 
-## Deployment
+You can host the frontend on GitHub Pages and run the backend on a separate server.
+
+### Step 1: Deploy the Backend
+
+Deploy the backend to any Node.js hosting platform:
+- **Railway**: Connect your GitHub repo
+- **Render**: Connect your GitHub repo
+- **Heroku**: `git push heroku main`
+- **DigitalOcean**: App Platform or Droplet
+
+Make sure to set your environment variables (`SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`).
+
+### Step 2: Configure GitHub Pages
+
+1. Edit `docs/index.html` and replace `YOUR_BACKEND_URL_HERE` with your deployed backend URL:
+   ```javascript
+   const BACKEND_URL = 'https://your-backend-server.com';
+   ```
+
+2. Go to your GitHub repo → **Settings** → **Pages**
+3. Under **Source**, select **Deploy from a branch**
+4. Select the **main** branch and **/docs** folder
+5. Click **Save**
+
+Your counter will be live at `https://yourusername.github.io/your-repo-name/`
+
+## Local Development
 
 ### Using ngrok (for local testing)
 
@@ -96,19 +122,6 @@ ngrok http 3000
 ```
 
 Then update your Slack app's Request URL to `https://your-ngrok-url.ngrok.io/slack/events`
-
-### Production Deployment
-
-Deploy to any Node.js hosting platform:
-- **Heroku**: `git push heroku main`
-- **Railway**: Connect your GitHub repo
-- **Render**: Connect your GitHub repo
-- **Vercel**: Use serverless configuration
-- **DigitalOcean**: App Platform or Droplet
-
-Make sure to:
-1. Set environment variables on your hosting platform
-2. Update the Slack app's Request URL to your production URL
 
 ## API Endpoints
 
@@ -121,10 +134,11 @@ Make sure to:
 
 ## How It Works
 
-1. **Slack Events API**: When a message is sent in Slack, Slack sends an event to our server
-2. **Message Counter**: The server increments the count and saves it to a file
-3. **WebSocket (Socket.io)**: The new count is broadcast to all connected browsers
-4. **Live Update**: The browser receives the update and displays the new count instantly
+1. **Auto-join**: On startup, the bot automatically joins all public channels in the workspace
+2. **Slack Events API**: When a message is sent in Slack, Slack sends an event to our server
+3. **Message Counter**: The server increments the count and saves it to a file
+4. **WebSocket (Socket.io)**: The new count is broadcast to all connected browsers
+5. **Live Update**: The browser receives the update and displays the new count instantly
 
 ## Tech Stack
 

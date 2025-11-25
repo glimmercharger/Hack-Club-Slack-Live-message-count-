@@ -146,10 +146,9 @@
     <!-- Socket.io loaded from CDN for GitHub Pages compatibility -->
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
-        // Configuration: Set your backend server URL here
-        // For local development: leave empty or use ''
-        // For GitHub Pages: set to your deployed backend URL (e.g., 'https://your-app.herokuapp.com')
-        const BACKEND_URL = window.BACKEND_URL || '';
+        // ⚠️ IMPORTANT: Set your backend server URL here!
+        // Replace this with your deployed backend URL (e.g., 'https://your-app.herokuapp.com')
+        const BACKEND_URL = 'YOUR_BACKEND_URL_HERE';
         
         const counterElement = document.getElementById('counter');
         const statusDot = document.getElementById('statusDot');
@@ -160,10 +159,15 @@
 
         // Initialize Socket.io connection
         function initializeSocket() {
-            const socketUrl = BACKEND_URL || window.location.origin;
+            if (BACKEND_URL === 'YOUR_BACKEND_URL_HERE' || !BACKEND_URL) {
+                statusDot.classList.add('disconnected');
+                statusText.textContent = 'Configure BACKEND_URL in index.html';
+                console.error('Please set BACKEND_URL to your deployed backend server URL');
+                return;
+            }
             
             try {
-                socket = io(socketUrl, {
+                socket = io(BACKEND_URL, {
                     transports: ['websocket', 'polling'],
                     reconnection: true,
                     reconnectionAttempts: Infinity,
@@ -214,8 +218,12 @@
 
         // Fallback: Fetch count via API if WebSocket fails
         async function fetchCount() {
+            if (BACKEND_URL === 'YOUR_BACKEND_URL_HERE' || !BACKEND_URL) {
+                return;
+            }
+            
             try {
-                const apiUrl = BACKEND_URL ? `${BACKEND_URL}/api/count` : '/api/count';
+                const apiUrl = `${BACKEND_URL}/api/count`;
                 const response = await fetch(apiUrl);
                 const data = await response.json();
                 updateCounter(data.count);

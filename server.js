@@ -53,7 +53,7 @@ const app = receiver.app;
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.io
+// Initialize Socket.io with CORS for GitHub Pages
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -64,6 +64,25 @@ const io = new Server(server, {
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Enable CORS for API endpoints (needed for GitHub Pages and cross-origin access)
+// Note: Wildcard is intentional - this is a public read-only counter API
+// For more restrictive use, set ALLOWED_ORIGINS env var (comma-separated domains)
+app.use((req, res, next) => {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS;
+  const origin = req.headers.origin;
+  
+  if (allowedOrigins) {
+    const origins = allowedOrigins.split(',').map(o => o.trim());
+    if (origins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
 // API endpoint to get current count
 app.get('/api/count', (req, res) => {
   res.json({ count: messageCount });
@@ -73,6 +92,55 @@ app.get('/api/count', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', count: messageCount });
 });
+
+// Function to join all public channels in the workspace
+async function joinAllChannels() {
+  console.log('🔄 Attempting to join all public channels...');
+  
+  try {
+    let cursor;
+    let totalJoined = 0;
+    let totalAlreadyIn = 0;
+    
+    do {
+      // Get list of all public channels
+      const result = await slackApp.client.conversations.list({
+        token: process.env.SLACK_BOT_TOKEN,
+        types: 'public_channel',
+        limit: 200,
+        cursor: cursor
+      });
+      
+      for (const channel of result.channels) {
+        if (!channel.is_member) {
+          try {
+            await slackApp.client.conversations.join({
+              token: process.env.SLACK_BOT_TOKEN,
+              channel: channel.id
+            });
+            console.log(`✅ Joined #${channel.name}`);
+            totalJoined++;
+            // Delay to respect Slack API rate limits (Tier 3: ~50 requests per minute)
+            await new Promise(resolve => setTimeout(resolve, 1200));
+          } catch (joinError) {
+            // Skip channels we can't join (archived, restricted, etc.)
+            if (joinError.data?.error !== 'is_archived') {
+              console.log(`⚠️ Could not join #${channel.name}: ${joinError.data?.error || joinError.message}`);
+            }
+          }
+        } else {
+          totalAlreadyIn++;
+        }
+      }
+      
+      cursor = result.response_metadata?.next_cursor;
+    } while (cursor);
+    
+    console.log(`📊 Channel join complete: ${totalJoined} new channels joined, ${totalAlreadyIn} already a member`);
+  } catch (error) {
+    console.error('❌ Error joining channels:', error.message);
+  }
+}
 
 // Listen for all messages in channels where the bot is present
 slackApp.message(async ({ message }) => {
@@ -112,8 +180,11 @@ io.on('connection', (socket) => {
 
 // Start the server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`⚡️ Server is running on port ${PORT}`);
   console.log(`📊 Current message count: ${messageCount}`);
   console.log(`🌐 Open http://localhost:${PORT} to view the counter`);
+  
+  // Auto-join all channels on startup
+  await joinAllChannels();
 });
