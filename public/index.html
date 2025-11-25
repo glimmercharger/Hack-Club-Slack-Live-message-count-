@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hack Club Slack Message Counter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #ec3750 0%, #ff8c37 100%);
+            color: white;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+
+        .counter-container {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 40px 60px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+
+        .counter-label {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }
+
+        #counter {
+            font-size: 6rem;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease;
+        }
+
+        #counter.pulse {
+            animation: pulse 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 30px;
+            font-size: 1rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #4caf50;
+            animation: blink 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background-color: #f44336;
+            animation: none;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .footer {
+            margin-top: 40px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: underline;
+        }
+
+        /* Hack Club logo styling */
+        .logo {
+            width: 80px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <svg class="logo" viewBox="0 0 100 100" fill="white">
+            <path d="M50 5L5 27.5v45L50 95l45-22.5v-45L50 5zm0 10l35 17.5v35L50 85 15 67.5v-35L50 15z"/>
+            <path d="M35 40h30v5H35zm0 15h30v5H35z"/>
+        </svg>
+        <h1>🎉 Hack Club Slack</h1>
+        <p class="subtitle">Live Message Counter</p>
+        
+        <div class="counter-container">
+            <p class="counter-label">Total Messages</p>
+            <div id="counter">0</div>
+        </div>
+        
+        <div class="status">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Connecting...</span>
+        </div>
+        
+        <p class="footer">
+            Powered by <a href="https://slack.com" target="_blank">Slack</a> 💬
+        </p>
+    </div>
+
+    <!-- Socket.io loaded from CDN for GitHub Pages compatibility -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        // Configuration: Set your backend server URL here
+        // For local development: leave empty or use ''
+        // For GitHub Pages: set to your deployed backend URL (e.g., 'https://your-app.herokuapp.com')
+        const BACKEND_URL = window.BACKEND_URL || '';
+        
+        const counterElement = document.getElementById('counter');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        
+        let currentCount = 0;
+        let socket = null;
+
+        // Initialize Socket.io connection
+        function initializeSocket() {
+            const socketUrl = BACKEND_URL || window.location.origin;
+            
+            try {
+                socket = io(socketUrl, {
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionAttempts: Infinity,
+                    reconnectionDelay: 1000,
+                    reconnectionDelayMax: 5000
+                });
+
+                socket.on('connect', () => {
+                    statusDot.classList.remove('disconnected');
+                    statusText.textContent = 'Connected - Live updates active';
+                    console.log('Connected to server');
+                });
+
+                socket.on('disconnect', () => {
+                    statusDot.classList.add('disconnected');
+                    statusText.textContent = 'Disconnected - Reconnecting...';
+                    console.log('Disconnected from server');
+                });
+
+                socket.on('connect_error', (error) => {
+                    console.log('Connection error:', error.message);
+                    statusDot.classList.add('disconnected');
+                    statusText.textContent = 'Connection error - Retrying...';
+                });
+
+                socket.on('countUpdate', (data) => {
+                    updateCounter(data.count);
+                });
+            } catch (error) {
+                console.error('Socket initialization error:', error);
+                statusDot.classList.add('disconnected');
+                statusText.textContent = 'Using polling mode';
+            }
+        }
+
+        function updateCounter(newCount) {
+            if (newCount !== currentCount) {
+                currentCount = newCount;
+                counterElement.textContent = newCount.toLocaleString();
+                
+                // Add pulse animation
+                counterElement.classList.add('pulse');
+                setTimeout(() => {
+                    counterElement.classList.remove('pulse');
+                }, 300);
+            }
+        }
+
+        // Fallback: Fetch count via API if WebSocket fails
+        async function fetchCount() {
+            try {
+                const apiUrl = BACKEND_URL ? `${BACKEND_URL}/api/count` : '/api/count';
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                updateCounter(data.count);
+            } catch (error) {
+                console.error('Error fetching count:', error);
+            }
+        }
+
+        // Initialize
+        initializeSocket();
+        fetchCount();
+
+        // Poll as backup every 30 seconds
+        setInterval(fetchCount, 30000);
+    </script>
+</body>
+</html>
