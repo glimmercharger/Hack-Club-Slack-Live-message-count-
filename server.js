@@ -144,23 +144,25 @@ async function joinAllChannels() {
 
 // Listen for all messages in channels where the bot is present
 slackApp.message(async ({ message }) => {
-  // Only count user messages, not bot messages or system messages
-  if (message.subtype === undefined || message.subtype === 'file_share') {
+  // Only count user messages from public channels, not bot messages or system messages
+  // channel_type: 'channel' = public channel, 'im' = DM, 'mpim' = group DM, 'group' = private channel
+  if ((message.subtype === undefined || message.subtype === 'file_share') && message.channel_type === 'channel') {
     messageCount++;
     saveMessageCount(messageCount);
     
     // Emit the new count to all connected clients
     io.emit('countUpdate', { count: messageCount });
     
-    console.log(`Message received! Total count: ${messageCount}`);
+    console.log(`Message received in public channel! Total count: ${messageCount}`);
   }
 });
 
 // Listen for message events (catches all channel messages)
 slackApp.event('message', async ({ event }) => {
   // This is a backup handler - the message() handler above should catch most messages
-  // but this ensures we don't miss any
-  if (!event.subtype || event.subtype === 'file_share') {
+  // but this ensures we don't miss any from public channels only
+  // channel_type: 'channel' = public channel, 'im' = DM, 'mpim' = group DM, 'group' = private channel
+  if ((!event.subtype || event.subtype === 'file_share') && event.channel_type === 'channel') {
     // Note: We don't increment here to avoid double counting
     // The message() listener above handles the increment
   }
