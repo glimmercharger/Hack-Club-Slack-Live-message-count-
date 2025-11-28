@@ -32,11 +32,7 @@ A real-time dashboard that displays a live count of messages sent on the Hack Cl
 Go to **OAuth & Permissions** and add these **Bot Token Scopes**:
 - `channels:join` - **Required**: Join public channels automatically
 - `channels:read` - **Required**: List all public channels
-- `channels:history` - View messages in public channels
-- `groups:history` - View messages in private channels (if needed)
-- `groups:read` - View basic private channel info (if needed)
-- `im:history` - View direct messages (if needed)
-- `mpim:history` - View group DMs (if needed)
+- `channels:history` - **Required**: View messages in public channels
 
 ### 3. Enable Event Subscriptions
 
@@ -45,9 +41,6 @@ Go to **OAuth & Permissions** and add these **Bot Token Scopes**:
 3. Set the **Request URL** to: `https://your-domain.com/slack/events`
 4. Under **Subscribe to bot events**, add:
    - `message.channels` - Messages in public channels
-   - `message.groups` - Messages in private channels (optional)
-   - `message.im` - Direct messages (optional)
-   - `message.mpim` - Group DMs (optional)
 
 ### 4. Install the App
 
